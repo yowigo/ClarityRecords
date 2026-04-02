@@ -1,0 +1,41 @@
+# Build output
+bin/
+obj/
+out/
+
+# .NET
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# IDE
+.vs/
+.idea/
+*.swp
+
+# gstack & Claude generated
+.gstack/
+.claude/
+
+# NuGet
+packages/
+*.nupkg
+**/[Nn]uget.Config
+
+# Logs
+*.log
+logs/
+
+# Secrets / env
+appsettings.*.json
+!appsettings.Development.json
+*.pfx
+*.p12
+
+# OS
+.DS_Store
+Thumbs.db

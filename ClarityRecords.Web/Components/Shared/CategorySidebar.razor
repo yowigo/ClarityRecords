@@ -1,0 +1,50 @@
+@using ClarityRecords.Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<div class="card sidebar-card">
+    <p class="sidebar-card-title">// CATEGORIES · 分类</p>
+    @if (_categories.Count == 0)
+    {
+        <p style="font-size:0.875rem;color:var(--text-light);margin:0">暂无分类</p>
+    }
+    else
+    {
+        <ul class="category-list">
+            <li>
+                <a href="/">
+                    <span>全部</span>
+                    <span class="category-count">@_totalCount 篇</span>
+                </a>
+            </li>
+            @foreach (var (name, slug, count) in _categories)
+            {
+                <li>
+                    <a href="/tags/@slug">
+                        <span>@name</span>
+                        <span class="category-count">@count 篇</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private List<(string Name, string Slug, int Count)> _categories = [];
+    private int _totalCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _totalCount = await db.Articles
+            .CountAsync(a => a.PublishedAt != null && a.PublishedAt <= DateTimeOffset.UtcNow);
+        var rows = await db.Tags
+            .Select(t => new { t.Name, t.Slug, Count = t.ArticleTags.Count(at => at.Article.PublishedAt != null) })
+            .OrderByDescending(x => x.Count)
+            .Take(10)
+            .AsNoTracking()
+            .ToListAsync();
+        _categories = rows.Select(x => (x.Name, x.Slug, x.Count)).ToList();
+    }
+}

@@ -1,0 +1,101 @@
+@page "/tags/{Slug}"
+@using ClarityRecords.Domain.Entities
+@using ClarityRecords.Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>@(_tag?.Name ?? Slug) — 澄明录</PageTitle>
+
+@if (_tag == null)
+{
+    <div class="empty-state" style="padding-top:80px">
+        <p class="empty-state-title">标签不存在</p>
+        <a href="/" class="btn-primary">← 返回首页</a>
+    </div>
+}
+else
+{
+    <div class="two-col">
+        <main>
+            <div class="article-meta" style="margin-bottom:24px">
+                <a href="/" style="color:var(--text-light)">首页</a>
+                <span style="margin:0 6px;color:var(--text-light)">/</span>
+                <span>@_tag.Name</span>
+                <span style="margin-left:8px;color:var(--text-light)">@_articles.Count 篇文章</span>
+            </div>
+
+            @if (_articles.Count == 0)
+            {
+                <div class="empty-state">
+                    <p class="empty-state-title">该标签下暂无文章</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var article in _articles)
+                {
+                    <article class="card article-card">
+                        <div class="article-meta">
+                            @article.PublishedAt?.ToString("yyyy-MM-dd")
+                            <span> · @EstimateReadingMinutes(article.Body) min read</span>
+                        </div>
+                        <h2 class="article-card-title">
+                            <a href="/articles/@article.Slug">@article.Title</a>
+                        </h2>
+                        @if (article.Summary != null)
+                        {
+                            <p class="article-summary">@article.Summary</p>
+                        }
+                        <div class="article-card-footer">
+                            <div class="tag-list">
+                                @foreach (var tag in article.ArticleTags.Select(at => at.Tag))
+                                {
+                                    <a href="/tags/@tag.Slug" class="tag">@tag.Name</a>
+                                }
+                            </div>
+                            <a href="/articles/@article.Slug" class="read-more">→ 阅读全文</a>
+                        </div>
+                    </article>
+                }
+            }
+        </main>
+
+        <aside class="sidebar">
+            <CategorySidebar />
+            <ReadingTraceSidebar />
+        </aside>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private Tag? _tag;
+    private List<Article> _articles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _tag = await db.Tags
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Slug == Slug);
+
+        if (_tag == null) return;
+
+        _articles = await db.Articles
+            .Where(a => a.PublishedAt != null && a.PublishedAt <= DateTimeOffset.UtcNow
+                     && a.ArticleTags.Any(at => at.Tag.Slug == Slug))
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
+            .OrderByDescending(a => a.PublishedAt)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    private static int EstimateReadingMinutes(string body)
+    {
+        var wordCount = body.Split([' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+        return Math.Max(1, wordCount / 250);
+    }
+}

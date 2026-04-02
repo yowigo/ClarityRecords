@@ -1,0 +1,46 @@
+@page "/admin"
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject NavigationManager Nav
+
+<PageTitle>管理后台 · 澄明录</PageTitle>
+
+<div class="two-col" style="padding-top:40px">
+    <main>
+        <div class="admin-header">
+            <h1 class="admin-page-title">管理后台</h1>
+            <form method="post" @formname="logout" style="display:inline" data-enhance="false">
+                <AntiforgeryToken />
+                <button type="submit" class="btn-logout">退出登录</button>
+            </form>
+        </div>
+        <p class="article-summary" style="margin-top:12px">
+            管理后台正在建设中，文章管理、知识链接等功能即将上线。
+        </p>
+    </main>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromForm(FormName = "logout")]
+    private LogoutInput? LogoutModel { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!(HttpContext?.User?.Identity?.IsAuthenticated ?? false))
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        if (HttpContext?.Request.Method == "POST" && LogoutModel is not null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    public class LogoutInput { }
+}

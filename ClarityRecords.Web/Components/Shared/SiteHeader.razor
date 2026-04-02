@@ -1,0 +1,32 @@
+<header class="site-header">
+    <div class="site-header-inner">
+        <a href="/" class="site-title">
+            <img src="/logo.png" alt="澄明录" class="site-logo" />
+        </a>
+        <div class="header-actions">
+            <a href="/graph" class="search-btn">知识图谱</a>
+            <button class="search-btn" onclick="openSearch()" title="搜索 (Ctrl+K)">
+                搜索 <span class="search-kbd">Ctrl+K</span>
+            </button>
+            <div class="theme-select-wrap">
+                <select id="theme-select" class="theme-select" onchange="setTheme(this.value)" title="切换主题">
+                    <option value="warm">暖·琥珀</option>
+                    <option value="cool">冷·素蓝</option>
+                </select>
+            </div>
+            @if (HttpContext?.User?.Identity?.IsAuthenticated == true)
+            {
+                <a href="/admin" class="search-btn">管理</a>
+            }
+            else
+            {
+                <a href="/login" class="search-btn">登录</a>
+            }
+        </div>
+    </div>
+</header>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+}

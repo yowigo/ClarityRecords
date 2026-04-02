@@ -1,0 +1,62 @@
+@using ClarityRecords.Domain.Entities
+@using ClarityRecords.Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<div class="card sidebar-card">
+    <p class="sidebar-card-title">// TRACE · 思路轨迹</p>
+    @if (_traces.Count == 0)
+    {
+        <p style="font-size:0.8rem;color:var(--text-light);margin:0;line-height:1.6">
+            发布文章或关联知识节点后，思路轨迹将在这里记录
+        </p>
+    }
+    else
+    {
+        <ul class="trace-list">
+            @foreach (var trace in _traces)
+            {
+                <li class="trace-item">
+                    <span class="trace-dot @trace.EventType"></span>
+                    <div class="trace-content">
+                        <div class="trace-title">
+                            @if (trace.Article != null)
+                            {
+                                <a href="/articles/@trace.Article.Slug">@trace.Article.Title</a>
+                            }
+                            else if (trace.Note != null)
+                            {
+                                @trace.Note
+                            }
+                        </div>
+                        <div class="trace-time">@FormatTime(trace.OccurredAt)</div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private List<ReadingTrace> _traces = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _traces = await db.ReadingTraces
+            .Include(t => t.Article)
+            .OrderByDescending(t => t.OccurredAt)
+            .Take(8)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    private static string FormatTime(DateTimeOffset t)
+    {
+        var diff = DateTimeOffset.UtcNow - t;
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 30) return $"{(int)diff.TotalDays}d ago";
+        return t.ToString("MM-dd");
+    }
+}

@@ -1,0 +1,32 @@
+@page "/graph"
+@layout GraphLayout
+@using ClarityRecords.Web.Components.Layout
+
+<PageTitle>知识图谱 — 澄明录</PageTitle>
+
+<div class="graph-page">
+    <div class="graph-toolbar">
+        <span class="graph-toolbar-label">// GRAPH · 知识图谱</span>
+        <span class="graph-toolbar-hint">节点可拖拽 &middot; 滚轮缩放 &middot; 点击跳转</span>
+        <a href="/" class="graph-back-link">← 返回首页</a>
+    </div>
+    <div id="graph-container"></div>
+</div>
+
+<!-- 移动端：浮动思路轨迹按钮 -->
+<button class="trace-float-btn" onclick="toggleTraceDrawer()">思路轨迹 ↑</button>
+<div id="trace-drawer-mobile" class="trace-drawer-mobile">
+    <button class="trace-drawer-handle" onclick="toggleTraceDrawer()" aria-label="关闭"></button>
+    <div class="trace-drawer-content">
+        <ReadingTraceSidebar />
+    </div>
+</div>
+
+<!-- ✅ 加这一段，data-enhance-nav-script 确保增强导航时重新执行 -->
+<script data-enhance-nav-script>
+    console.log(111);
+    if (typeof window.initGraph === 'function') {
+        console.log(222);
+        window.initGraph();
+    }
+</script>

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ClarityRecords.Domain/ClarityRecords.Domain.csproj" />
+  <Project Path="ClarityRecords.Infrastructure/ClarityRecords.Infrastructure.csproj" />
+  <Project Path="ClarityRecords.Tests/ClarityRecords.Tests.csproj" />
+  <Project Path="ClarityRecords.Web/ClarityRecords.Web.csproj" />
+</Solution>

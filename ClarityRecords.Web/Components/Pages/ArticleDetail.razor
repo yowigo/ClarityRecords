@@ -1,0 +1,131 @@
+@page "/articles/{Slug}"
+@using ClarityRecords.Domain.Entities
+@using ClarityRecords.Domain.Services
+@using ClarityRecords.Infrastructure.Data
+@using Microsoft.AspNetCore.Components
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IMarkdownRenderer Markdown
+@inject NavigationManager Nav
+
+<PageTitle>@(_article?.Title ?? "文章不存在") — 澄明录</PageTitle>
+
+@if (_article == null)
+{
+    <div class="empty-state" style="padding-top:80px">
+        <p class="empty-state-title">文章不存在或已下线</p>
+        <a href="/" class="btn-primary">← 返回首页</a>
+    </div>
+}
+else
+{
+    <div class="two-col">
+        <main>
+            <article class="article-detail-content">
+                <h1 class="article-detail-title">@_article.Title</h1>
+                <div class="article-detail-meta">
+                    @_article.PublishedAt?.ToString("yyyy-MM-dd")
+                    <span> · @EstimateReadingMinutes(_article.Body) min read</span>
+                    @if (_article.ArticleTags.Any())
+                    {
+                        <span> · </span>
+                        @foreach (var tag in _article.ArticleTags.Select(at => at.Tag))
+                        {
+                            <a href="/tags/@tag.Slug" class="tag" style="margin-right:4px">@tag.Name</a>
+                        }
+                    }
+                </div>
+                <div class="article-body">
+                    @((MarkupString)_renderedHtml)
+                </div>
+            </article>
+        </main>
+
+        <aside class="sidebar">
+            <div class="card sidebar-card">
+                <p class="sidebar-card-title">// RELATED · 相关文章</p>
+                @if (_relatedArticles.Count == 0)
+                {
+                    <p style="font-size:0.8rem;color:var(--text-light);margin:0">暂无关联文章</p>
+                }
+                else
+                {
+                    <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
+                        @foreach (var related in _relatedArticles)
+                        {
+                            <li>
+                                <a href="/articles/@related.Slug" style="font-size:0.875rem;color:var(--text)">
+                                    @related.Title
+                                </a>
+                                <div style="font-size:0.65rem;font-family:var(--mono);color:var(--text-light);margin-top:2px">
+                                    @related.PublishedAt?.ToString("yyyy-MM-dd")
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <div class="card sidebar-card">
+                <p class="sidebar-card-title">// AI · 智能对话</p>
+                <p style="font-size:0.875rem;color:var(--text-muted);margin:0 0 10px">
+                    基于这篇文章和 AI 深入探讨
+                </p>
+                <button
+                    class="btn-primary"
+                    style="width:100%;justify-content:center;cursor:not-allowed;opacity:0.6"
+                    disabled
+                    title="Phase 4 实现">
+                    和 AI 聊聊这篇 →
+                </button>
+            </div>
+
+            <ReadingTraceSidebar />
+        </aside>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private Article? _article;
+    private string _renderedHtml = string.Empty;
+    private List<Article> _relatedArticles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _article = await db.Articles
+            .Where(a => a.Slug == Slug && a.PublishedAt != null && a.PublishedAt <= DateTimeOffset.UtcNow)
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (_article == null) return;
+
+        _renderedHtml = Markdown.Render(_article.Body);
+
+        var linkedIds = await db.ArticleManualLinks
+            .Where(l => l.FromArticleId == _article.Id || l.ToArticleId == _article.Id)
+            .Select(l => l.FromArticleId == _article.Id ? l.ToArticleId : l.FromArticleId)
+            .ToListAsync();
+
+        if (linkedIds.Count > 0)
+        {
+            _relatedArticles = await db.Articles
+                .Where(a => linkedIds.Contains(a.Id) && a.PublishedAt != null)
+                .OrderByDescending(a => a.PublishedAt)
+                .Take(5)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+    }
+
+    private static int EstimateReadingMinutes(string body)
+    {
+        var wordCount = body.Split([' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+        return Math.Max(1, wordCount / 250);
+    }
+}

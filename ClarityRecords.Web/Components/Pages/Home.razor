@@ -1,0 +1,78 @@
+@page "/"
+@using ClarityRecords.Domain.Entities
+@using ClarityRecords.Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>澄明录</PageTitle>
+
+<div class="two-col">
+    <main>
+        @if (_articles.Count == 0)
+        {
+            <div class="empty-state">
+                <p class="empty-state-title">还没有文章 · 开始记录你的思考</p>
+                <p class="empty-state-desc">第一篇文章将成为知识图谱的起点</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var article in _articles)
+            {
+                <article class="card article-card">
+                    <div class="article-meta">
+                        @article.PublishedAt?.ToString("yyyy-MM-dd")
+                        @if (EstimateReadingMinutes(article.Body) > 0)
+                        {
+                            <span> · @EstimateReadingMinutes(article.Body) min read</span>
+                        }
+                    </div>
+                    <h2 class="article-card-title">
+                        <a href="/articles/@article.Slug">@article.Title</a>
+                    </h2>
+                    @if (article.Summary != null)
+                    {
+                        <p class="article-summary">@article.Summary</p>
+                    }
+                    <div class="article-card-footer">
+                        <div class="tag-list">
+                            @foreach (var tag in article.ArticleTags.Select(at => at.Tag))
+                            {
+                                <a href="/tags/@tag.Slug" class="tag">@tag.Name</a>
+                            }
+                        </div>
+                        <a href="/articles/@article.Slug" class="read-more">→ 阅读全文</a>
+                    </div>
+                </article>
+            }
+        }
+    </main>
+
+    <aside class="sidebar">
+        <CategorySidebar />
+        <GraphTeaser />
+        <ReadingTraceSidebar />
+    </aside>
+</div>
+
+@code {
+    private List<Article> _articles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _articles = await db.Articles
+            .Where(a => a.PublishedAt != null && a.PublishedAt <= DateTimeOffset.UtcNow)
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
+            .OrderByDescending(a => a.PublishedAt)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    private static int EstimateReadingMinutes(string body)
+    {
+        var wordCount = body.Split([' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+        return Math.Max(1, wordCount / 250);
+    }
+}
