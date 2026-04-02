@@ -1,9 +1,11 @@
 using ClarityRecords.Domain.Entities;
+using ClarityRecords.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClarityRecords.Infrastructure.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<Tag> Tags => Set<Tag>();
@@ -13,6 +15,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<Article>(e =>
         {
             e.ToTable("articles");
@@ -25,6 +29,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(a => a.CreatedAt).HasDefaultValueSql("NOW()");
             e.Property(a => a.UpdatedAt).HasDefaultValueSql("NOW()");
             e.HasIndex(a => a.Slug).IsUnique();
+            e.Property(a => a.AuthorId).HasMaxLength(450);
+            e.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(a => a.AuthorId)
+                .OnDelete(DeleteBehavior.SetNull);
             // Embedding column added in Phase 3 migration
         });
 

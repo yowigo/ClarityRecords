@@ -1,0 +1,156 @@
+@page "/admin/articles"
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Data
+@using ClarityRecords.Infrastructure.Identity
+@using ClarityRecords.Domain.Entities
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>文章管理 · 澄明录</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <h1 class="admin-page-title" style="margin:0">文章管理</h1>
+    <a href="/admin/articles/new" class="btn-primary">+ 新建文章</a>
+</div>
+
+<div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+    <input type="text" class="search-input" placeholder="搜索标题..." @bind="_searchTerm" @bind:event="oninput" @onkeyup="OnSearch" style="flex:1; min-width:200px;" />
+    <select class="filter-select" @bind="_statusFilter" @bind:after="LoadArticles">
+        <option value="">全部状态</option>
+        <option value="published">已发布</option>
+        <option value="draft">草稿</option>
+    </select>
+</div>
+
+@if (_loading)
+{
+    <p style="color:var(--text-muted)">加载中...</p>
+}
+else
+{
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>标题</th>
+                <th>状态</th>
+                <th>标签</th>
+                <th>发布时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var article in _articles)
+            {
+                <tr>
+                    <td>
+                        <a href="/admin/articles/@article.Id/edit" class="article-title-link">@article.Title</a>
+                    </td>
+                    <td>
+                        @if (article.IsPublished)
+                        {
+                            <span class="status-badge status-published">已发布</span>
+                        }
+                        else
+                        {
+                            <span class="status-badge status-draft">草稿</span>
+                        }
+                    </td>
+                    <td>
+                        @foreach (var tag in article.ArticleTags.Select(at => at.Tag))
+                        {
+                            <span class="tag-chip">@tag.Name</span>
+                        }
+                    </td>
+                    <td style="color:var(--text-muted); font-size:0.82rem;">
+                        @(article.PublishedAt?.ToString("yyyy-MM-dd") ?? "—")
+                    </td>
+                    <td>
+                        <a href="/admin/articles/@article.Id/edit" class="action-link">编辑</a>
+                        <button class="action-link action-danger" @onclick="() => DeleteArticle(article.Id)">删除</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        @if (_page > 1)
+        {
+            <button class="btn-secondary" @onclick="PrevPage">← 上一页</button>
+        }
+        <span style="color:var(--text-muted); font-size:0.82rem;">第 @_page 页 / 共 @_totalPages 页（@_totalCount 篇）</span>
+        @if (_page < _totalPages)
+        {
+            <button class="btn-secondary" @onclick="NextPage">下一页 →</button>
+        }
+    </div>
+}
+
+@code {
+    private List<Article> _articles = [];
+    private bool _loading = true;
+    private string _searchTerm = "";
+    private string _statusFilter = "";
+    private int _page = 1;
+    private int _totalCount;
+    private int _totalPages;
+    private const int PageSize = 20;
+
+    protected override async Task OnInitializedAsync() => await LoadArticles();
+
+    private async Task LoadArticles()
+    {
+        _loading = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var now = DateTimeOffset.UtcNow;
+
+        var query = db.Articles
+            .Include(a => a.ArticleTags).ThenInclude(at => at.Tag)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+            query = query.Where(a => a.Title.Contains(_searchTerm));
+
+        if (_statusFilter == "published")
+            query = query.Where(a => a.PublishedAt != null && a.PublishedAt <= now);
+        else if (_statusFilter == "draft")
+            query = query.Where(a => a.PublishedAt == null || a.PublishedAt > now);
+
+        _totalCount = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalCount / (double)PageSize));
+        _page = Math.Min(_page, _totalPages);
+
+        _articles = await query
+            .OrderByDescending(a => a.UpdatedAt)
+            .Skip((_page - 1) * PageSize)
+            .Take(PageSize)
+            .AsNoTracking()
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private async Task OnSearch()
+    {
+        _page = 1;
+        await LoadArticles();
+    }
+
+    private async Task PrevPage() { _page--; await LoadArticles(); }
+    private async Task NextPage() { _page++; await LoadArticles(); }
+
+    private async Task DeleteArticle(Guid id)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var article = await db.Articles.FindAsync(id);
+        if (article != null)
+        {
+            db.Articles.Remove(article);
+            await db.SaveChangesAsync();
+        }
+        await LoadArticles();
+    }
+}

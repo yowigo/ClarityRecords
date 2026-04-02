@@ -1,0 +1,210 @@
+@page "/admin/users"
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Identity
+@inject UserManager<ApplicationUser> UserManager
+@inject IUserStore<ApplicationUser> UserStore
+@inject SignInManager<ApplicationUser> SignInManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>用户管理 · 澄明录</PageTitle>
+
+<h1 class="admin-page-title">用户管理</h1>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="@(_isError ? "form-error" : "form-success")">@_message</div>
+}
+
+@if (!string.IsNullOrEmpty(_tempPassword))
+{
+    <div class="form-success" style="font-family:var(--mono); font-size:0.9rem;">
+        临时密码（仅显示一次）：<strong>@_tempPassword</strong>
+    </div>
+}
+
+<div style="display:grid; grid-template-columns:1fr 300px; gap:32px; align-items:start;">
+    <div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>邮箱</th>
+                    <th>角色</th>
+                    <th>状态</th>
+                    <th>最近登录</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in _users)
+                {
+                    <tr>
+                        <td>@u.User.Email</td>
+                        <td>
+                            @foreach (var role in u.Roles)
+                            {
+                                <span class="tag-chip">@role</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.User.LockoutEnd.HasValue && u.User.LockoutEnd > DateTimeOffset.UtcNow)
+                            {
+                                <span class="status-badge status-draft">已停用</span>
+                            }
+                            else
+                            {
+                                <span class="status-badge status-published">正常</span>
+                            }
+                        </td>
+                        <td style="color:var(--text-muted); font-size:0.82rem;">
+                            @(u.User.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")
+                        </td>
+                        <td>
+                            @if (u.User.LockoutEnd.HasValue && u.User.LockoutEnd > DateTimeOffset.UtcNow)
+                            {
+                                <button class="action-link" @onclick="() => EnableUser(u.User.Id)">启用</button>
+                            }
+                            else
+                            {
+                                <button class="action-link action-danger" @onclick="() => DisableUser(u.User.Id)">停用</button>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!_users.Any())
+                {
+                    <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px">暂无用户</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-panel">
+        <h3 style="font-size:0.9rem; margin:0 0 16px; font-weight:600;">邀请用户</h3>
+        <div class="form-group">
+            <label class="form-label">邮箱</label>
+            <input class="form-input" @bind="_inviteEmail" placeholder="user@example.com" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">分配角色</label>
+            <select class="form-input" @bind="_inviteRole">
+                <option value="">— 不分配角色 —</option>
+                @foreach (var role in _allRoles)
+                {
+                    <option value="@role">@role</option>
+                }
+            </select>
+        </div>
+        <button class="btn-primary" @onclick="InviteUser">创建并邀请</button>
+    </div>
+</div>
+
+@code {
+    private record UserRow(ApplicationUser User, List<string> Roles);
+
+    private List<UserRow> _users = [];
+    private List<string> _allRoles = [];
+    private string _message = "";
+    private bool _isError;
+    private string _tempPassword = "";
+    private string _inviteEmail = "";
+    private string _inviteRole = "";
+    private string _currentUserId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserId = authState.User.FindFirst(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _allRoles = await RoleManager.Roles.OrderBy(r => r.Name).Select(r => r.Name!).ToListAsync();
+
+        var users = UserManager.Users.ToList();
+        _users = [];
+        foreach (var u in users.OrderBy(u => u.Email))
+        {
+            var roles = (await UserManager.GetRolesAsync(u)).ToList();
+            _users.Add(new UserRow(u, roles));
+        }
+    }
+
+    [Inject] private RoleManager<IdentityRole> RoleManager { get; set; } = default!;
+
+    private async Task InviteUser()
+    {
+        _message = ""; _tempPassword = "";
+        if (string.IsNullOrWhiteSpace(_inviteEmail)) { ShowMessage("邮箱不能为空", true); return; }
+
+        var existing = await UserManager.FindByEmailAsync(_inviteEmail.Trim());
+        if (existing != null) { ShowMessage("该邮箱已存在", true); return; }
+
+        var password = GeneratePassword();
+        var user = new ApplicationUser
+        {
+            UserName = _inviteEmail.Trim(),
+            Email = _inviteEmail.Trim(),
+            RequirePasswordChange = true,
+            LockoutEnabled = true
+        };
+
+        var result = await UserManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+        {
+            ShowMessage(string.Join("；", result.Errors.Select(e => e.Description)), true);
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(_inviteRole))
+            await UserManager.AddToRoleAsync(user, _inviteRole);
+
+        _tempPassword = password;
+        _inviteEmail = "";
+        _inviteRole = "";
+        ShowMessage($"用户已创建", false);
+        await LoadData();
+    }
+
+    private async Task DisableUser(string userId)
+    {
+        if (userId == _currentUserId) { ShowMessage("不能停用自己", true); return; }
+
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user == null) return;
+
+        var roles = await UserManager.GetRolesAsync(user);
+        if (roles.Contains("Admin"))
+        {
+            var admins = await UserManager.GetUsersInRoleAsync("Admin");
+            var activeAdmins = admins.Where(a =>
+                !a.LockoutEnd.HasValue || a.LockoutEnd <= DateTimeOffset.UtcNow).ToList();
+            if (activeAdmins.Count <= 1) { ShowMessage("不能停用唯一的管理员", true); return; }
+        }
+
+        await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+        ShowMessage("用户已停用", false);
+        await LoadData();
+    }
+
+    private async Task EnableUser(string userId)
+    {
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user == null) return;
+        await UserManager.SetLockoutEndDateAsync(user, null);
+        ShowMessage("用户已启用", false);
+        await LoadData();
+    }
+
+    private void ShowMessage(string msg, bool isError) { _message = msg; _isError = isError; }
+
+    private static string GeneratePassword()
+    {
+        const string chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#";
+        var random = new Random();
+        return new string(Enumerable.Range(0, 16).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+    }
+}

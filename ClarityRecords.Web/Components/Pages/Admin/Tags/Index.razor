@@ -1,0 +1,166 @@
+@page "/admin/tags"
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Data
+@using ClarityRecords.Domain.Entities
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>标签管理 · 澄明录</PageTitle>
+
+<h1 class="admin-page-title">标签管理</h1>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="@(_isError ? "form-error" : "form-success")">@_message</div>
+}
+
+<div style="display:grid; grid-template-columns:1fr 280px; gap:32px; align-items:start;">
+    <div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>标签名</th>
+                    <th>Slug</th>
+                    <th>文章数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tag in _tags)
+                {
+                    <tr>
+                        <td>@tag.Name</td>
+                        <td style="font-family:var(--mono); font-size:0.78rem; color:var(--text-muted)">@tag.Slug</td>
+                        <td style="color:var(--text-muted)">@tag.ArticleTags.Count</td>
+                        <td>
+                            <button class="action-link" @onclick="() => StartEdit(tag)">编辑</button>
+                            <button class="action-link action-danger" @onclick="() => DeleteTag(tag)">删除</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-panel">
+        <h3 style="font-size:0.9rem; margin:0 0 16px; font-weight:600;">@(_editId == null ? "新建标签" : "编辑标签")</h3>
+        <div class="form-group">
+            <label class="form-label">标签名</label>
+            <input class="form-input" value="@_editName"
+                   @oninput="OnEditNameInput"
+                   placeholder="标签名称" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Slug</label>
+            <input class="form-input" @bind="_editSlug" placeholder="tag-slug" />
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button class="btn-primary" @onclick="SaveTag">保存</button>
+            @if (_editId != null)
+            {
+                <button class="btn-secondary" @onclick="CancelEdit">取消</button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Tag> _tags = [];
+    private string _message = "";
+    private bool _isError;
+    private Guid? _editId;
+    private string _editName = "";
+    private string _editSlug = "";
+
+    protected override async Task OnInitializedAsync() => await LoadTags();
+
+    private async Task LoadTags()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _tags = await db.Tags
+            .Include(t => t.ArticleTags)
+            .OrderBy(t => t.Name)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    private void OnEditNameInput(ChangeEventArgs e)
+    {
+        _editName = e.Value?.ToString() ?? "";
+        if (_editId == null) _editSlug = GenerateSlug(_editName);
+    }
+
+    private void StartEdit(Tag tag)
+    {
+        _editId = tag.Id;
+        _editName = tag.Name;
+        _editSlug = tag.Slug;
+        _message = "";
+    }
+
+    private void CancelEdit()
+    {
+        _editId = null;
+        _editName = "";
+        _editSlug = "";
+    }
+
+    private async Task SaveTag()
+    {
+        if (string.IsNullOrWhiteSpace(_editName)) { ShowMessage("标签名不能为空", true); return; }
+        if (string.IsNullOrWhiteSpace(_editSlug)) { ShowMessage("Slug 不能为空", true); return; }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        try
+        {
+            if (_editId == null)
+            {
+                db.Tags.Add(new Tag { Name = _editName.Trim(), Slug = _editSlug.Trim() });
+            }
+            else
+            {
+                var tag = await db.Tags.FindAsync(_editId.Value);
+                if (tag == null) return;
+                tag.Name = _editName.Trim();
+                tag.Slug = _editSlug.Trim();
+            }
+            await db.SaveChangesAsync();
+            CancelEdit();
+            ShowMessage(_editId == null ? "标签已创建" : "标签已更新", false);
+        }
+        catch (DbUpdateException)
+        {
+            ShowMessage("名称或 Slug 已存在", true);
+        }
+        await LoadTags();
+    }
+
+    private async Task DeleteTag(Tag tag)
+    {
+        if (tag.ArticleTags.Count > 0)
+        {
+            ShowMessage($"无法删除：该标签关联了 {tag.ArticleTags.Count} 篇文章", true);
+            return;
+        }
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Tags.FindAsync(tag.Id);
+        if (t != null) { db.Tags.Remove(t); await db.SaveChangesAsync(); }
+        ShowMessage("标签已删除", false);
+        await LoadTags();
+    }
+
+    private void ShowMessage(string msg, bool isError)
+    {
+        _message = msg;
+        _isError = isError;
+    }
+
+    private static string GenerateSlug(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var slug = name.ToLower().Replace(" ", "-");
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^\w\-]", "");
+        return System.Text.RegularExpressions.Regex.Replace(slug, @"-+", "-").Trim('-');
+    }
+}

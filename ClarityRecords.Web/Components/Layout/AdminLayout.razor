@@ -1,0 +1,40 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <a href="/" class="admin-sidebar-brand">澄明录</a>
+        <nav class="admin-nav">
+            <a href="/admin">仪表盘</a>
+            <a href="/admin/articles">文章管理</a>
+            <a href="/admin/tags">标签管理</a>
+            <a href="/admin/knowledge-links">知识链接</a>
+            <a href="/admin/users">用户管理</a>
+            <a href="/admin/roles">角色管理</a>
+        </nav>
+        <div class="admin-sidebar-footer">
+            <form method="post" action="/account/logout">
+                <AntiforgeryToken />
+                <button type="submit" class="btn-logout">退出登录</button>
+            </form>
+        </div>
+    </aside>
+    <main class="admin-main">
+        @Body
+    </main>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState != null)
+        {
+            var state = await AuthState;
+            if (!(state.User.Identity?.IsAuthenticated ?? false))
+                Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+}

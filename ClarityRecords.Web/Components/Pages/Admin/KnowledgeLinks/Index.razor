@@ -1,0 +1,183 @@
+@page "/admin/knowledge-links"
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Data
+@using ClarityRecords.Domain.Entities
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>知识链接 · 澄明录</PageTitle>
+
+<h1 class="admin-page-title">知识链接管理</h1>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="@(_isError ? "form-error" : "form-success")">@_message</div>
+}
+
+<div style="display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:start;">
+    <div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>来源文章</th>
+                    <th>目标文章</th>
+                    <th>关联说明</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var link in _links)
+                {
+                    <tr>
+                        <td class="article-title-link">@link.FromArticle.Title</td>
+                        <td class="article-title-link">@link.ToArticle.Title</td>
+                        <td style="color:var(--text-muted); font-size:0.82rem;">@(link.RelationNote ?? "—")</td>
+                        <td style="color:var(--text-muted); font-size:0.82rem;">@link.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <button class="action-link action-danger" @onclick="() => DeleteLink(link.Id)">删除</button>
+                        </td>
+                    </tr>
+                }
+                @if (!_links.Any())
+                {
+                    <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px">暂无知识链接</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-panel">
+        <h3 style="font-size:0.9rem; margin:0 0 16px; font-weight:600;">新建链接</h3>
+
+        <div class="form-group">
+            <label class="form-label">来源文章</label>
+            <input class="form-input" value="@_fromSearch"
+                   @oninput="e => SearchArticles(e.Value?.ToString() ?? string.Empty, true)"
+                   placeholder="搜索文章标题..." />
+            @if (_fromResults.Any())
+            {
+                <div class="search-dropdown">
+                    @foreach (var a in _fromResults)
+                    {
+                        <div class="search-dropdown-item" @onclick="() => SelectFrom(a)">@a.Title</div>
+                    }
+                </div>
+            }
+            @if (_fromArticle != null)
+            {
+                <div class="selected-article">✓ @_fromArticle.Title</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">目标文章</label>
+            <input class="form-input" value="@_toSearch"
+                   @oninput="e => SearchArticles(e.Value?.ToString() ?? string.Empty, false)"
+                   placeholder="搜索文章标题..." />
+            @if (_toResults.Any())
+            {
+                <div class="search-dropdown">
+                    @foreach (var a in _toResults)
+                    {
+                        <div class="search-dropdown-item" @onclick="() => SelectTo(a)">@a.Title</div>
+                    }
+                </div>
+            }
+            @if (_toArticle != null)
+            {
+                <div class="selected-article">✓ @_toArticle.Title</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">关联说明（可选）</label>
+            <input class="form-input" @bind="_relationNote" placeholder="描述两篇文章的关联..." />
+        </div>
+
+        <button class="btn-primary" @onclick="CreateLink">创建链接</button>
+    </div>
+</div>
+
+@code {
+    private List<ArticleManualLink> _links = [];
+    private string _message = "";
+    private bool _isError;
+
+    private string _fromSearch = "";
+    private string _toSearch = "";
+    private List<Article> _fromResults = [];
+    private List<Article> _toResults = [];
+    private Article? _fromArticle;
+    private Article? _toArticle;
+    private string _relationNote = "";
+
+    protected override async Task OnInitializedAsync() => await LoadLinks();
+
+    private async Task LoadLinks()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _links = await db.ArticleManualLinks
+            .Include(l => l.FromArticle)
+            .Include(l => l.ToArticle)
+            .OrderByDescending(l => l.CreatedAt)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    private async Task SearchArticles(string term, bool isFrom)
+    {
+        if (isFrom) _fromSearch = term; else _toSearch = term;
+        if (string.IsNullOrWhiteSpace(term)) { if (isFrom) _fromResults = []; else _toResults = []; return; }
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var results = await db.Articles
+            .Where(a => a.Title.Contains(term))
+            .OrderBy(a => a.Title)
+            .Take(6)
+            .AsNoTracking()
+            .ToListAsync();
+        if (isFrom) _fromResults = results;
+        else _toResults = results;
+    }
+
+    private void SelectFrom(Article a) { _fromArticle = a; _fromSearch = ""; _fromResults = []; }
+    private void SelectTo(Article a)   { _toArticle = a;   _toSearch = "";   _toResults = []; }
+
+    private async Task CreateLink()
+    {
+        if (_fromArticle == null || _toArticle == null) { ShowMessage("请选择来源和目标文章", true); return; }
+        if (_fromArticle.Id == _toArticle.Id)           { ShowMessage("来源和目标文章不能相同", true); return; }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var exists = await db.ArticleManualLinks.AnyAsync(l =>
+            (l.FromArticleId == _fromArticle.Id && l.ToArticleId == _toArticle.Id) ||
+            (l.FromArticleId == _toArticle.Id   && l.ToArticleId == _fromArticle.Id));
+
+        if (exists) { ShowMessage("该链接已存在", true); return; }
+
+        db.ArticleManualLinks.Add(new ArticleManualLink
+        {
+            FromArticleId = _fromArticle.Id,
+            ToArticleId   = _toArticle.Id,
+            RelationNote  = string.IsNullOrWhiteSpace(_relationNote) ? null : _relationNote.Trim(),
+            CreatedAt     = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        _fromArticle = null; _toArticle = null; _relationNote = "";
+        ShowMessage("链接已创建", false);
+        await LoadLinks();
+    }
+
+    private async Task DeleteLink(Guid id)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var link = await db.ArticleManualLinks.FindAsync(id);
+        if (link != null) { db.ArticleManualLinks.Remove(link); await db.SaveChangesAsync(); }
+        ShowMessage("链接已删除", false);
+        await LoadLinks();
+    }
+
+    private void ShowMessage(string msg, bool isError) { _message = msg; _isError = isError; }
+}

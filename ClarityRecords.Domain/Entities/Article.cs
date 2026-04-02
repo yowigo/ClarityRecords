@@ -12,6 +12,8 @@ public class Article
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    public string? AuthorId { get; set; }
+
     public ICollection<ArticleTag> ArticleTags { get; set; } = [];
     public ICollection<ArticleManualLink> OutgoingLinks { get; set; } = [];
     public ICollection<ArticleManualLink> IncomingLinks { get; set; } = [];

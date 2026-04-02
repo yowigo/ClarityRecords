@@ -6,64 +6,64 @@
 
 设计文档：`C:\Users\xuyilai\.gstack\projects\ClarityRecords\xuyilai-master-design-20260402-131127.md`
 
-### Step 1 — 数据库迁移（Identity + author_id）
+### Step 1 — 数据库迁移（Identity + author_id） ✅
 
-- [ ] `ClarityRecords.Infrastructure` 添加 NuGet：`Microsoft.AspNetCore.Identity.EntityFrameworkCore`
-- [ ] 新建 `ClarityRecords.Domain/Identity/ApplicationUser.cs`（继承 IdentityUser，含 `RequirePasswordChange`、`LastLoginAt`）
-- [ ] 修改 `AppDbContext` 继承 `IdentityDbContext<ApplicationUser>`
-- [ ] `Article` 实体新增 `string? AuthorId`，EF 配置 `HasMaxLength(450)` + 关系
-- [ ] 新建 `ClarityRecords.Domain/Authorization/Permissions.cs`（10 个权限常量 + `All` 数组）
-- [ ] 生成迁移：`dotnet ef migrations add AddIdentityAndAuthorId`
+- [x] `ClarityRecords.Infrastructure` 添加 NuGet：`Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- [x] 新建 `ClarityRecords.Domain/Identity/ApplicationUser.cs`（继承 IdentityUser，含 `RequirePasswordChange`、`LastLoginAt`）
+- [x] 修改 `AppDbContext` 继承 `IdentityDbContext<ApplicationUser>`
+- [x] `Article` 实体新增 `string? AuthorId`，EF 配置 `HasMaxLength(450)` + 关系
+- [x] 新建 `ClarityRecords.Domain/Authorization/Permissions.cs`（10 个权限常量 + `All` 数组）
+- [x] 生成迁移：`dotnet ef migrations add AddIdentityAndAuthorId`
 - [ ] 验证：迁移跑通，应用能启动
 
-### Step 2 — 认证替换
+### Step 2 — 认证替换 ✅
 
-- [ ] `Program.cs` 注册 `AddIdentity<ApplicationUser, IdentityRole>()` + `AddEntityFrameworkStores`
-- [ ] `Program.cs` 注册 Authorization Policies（循环 `Permissions.All`）
-- [ ] `Program.cs` 配置 `SecurityStampValidatorOptions.ValidationInterval = 5min`
-- [ ] 改写 `/account/login` endpoint → `SignInManager.SignInWithClaimsAsync`（注入 permission claims）
-- [ ] 新增 `/account/change-password` 路由（GET + POST）
-- [ ] 启动时 seed 初始 Admin 账号（从 `AdminCredentials` 配置读一次，之后删除该配置）
+- [x] `Program.cs` 注册 `AddIdentity<ApplicationUser, IdentityRole>()` + `AddEntityFrameworkStores`
+- [x] `Program.cs` 注册 Authorization Policies（循环 `Permissions.All`）
+- [x] `Program.cs` 配置 `SecurityStampValidatorOptions.ValidationInterval = 5min`
+- [x] 改写 `/account/login` endpoint → `SignInManager.SignInWithClaimsAsync`（注入 permission claims）
+- [x] 新增 `/account/change-password` 路由（GET + POST）
+- [x] 启动时 seed 初始 Admin 账号（从 `AdminCredentials` 配置读一次，之后删除该配置）
 - [ ] 验证：能用 Identity 登录，Cookie 中含 permission claims
 
-### Step 3 — AdminLayout + 仪表盘
+### Step 3 — AdminLayout + 仪表盘 ✅
 
-- [ ] 新建 `Components/Layout/AdminLayout.razor`（`@attribute [RenderModeInteractiveServer]`，含认证检查）
-- [ ] 仪表盘 `/admin`：统计卡片（文章数/已发布/草稿/用户数/知识链接数）
+- [x] 新建 `Components/Layout/AdminLayout.razor`（含认证检查，页面用 `@rendermode InteractiveServer`）
+- [x] 仪表盘 `/admin`：统计卡片（文章数/已发布/草稿/用户数/知识链接数）
 - [ ] 验证：Interactive Server 正常，未登录跳转 `/login`
 
-### Step 4 — 文章管理（核心目标）
+### Step 4 — 文章管理（核心目标） ✅
 
-- [ ] 下载 EasyMDE 到 `wwwroot/js/easymde.min.js` + `wwwroot/css/easymde.min.css`
-- [ ] 新建 `wwwroot/js/editor-init.js`（`initEasyMDE`/`getEasyMDEContent`/`setEasyMDEContent`）
-- [ ] `App.razor` `<head>` 加载 EasyMDE 资源
-- [ ] 文章列表 `/admin/articles`（分页 20 条/页，搜索，按权限过滤）
-- [ ] 文章编辑器 `/admin/articles/new` + `/admin/articles/{id}/edit`（EasyMDE + Markdig 预渲染）
-- [ ] `.md` 文件导入按钮
+- [x] 下载 EasyMDE 到 `wwwroot/js/easymde.min.js` + `wwwroot/css/easymde.min.css`
+- [x] 新建 `wwwroot/js/editor-init.js`（`initEasyMDE`/`getEasyMDEContent`/`setEasyMDEContent`）
+- [x] `App.razor` `<head>` 加载 EasyMDE 资源
+- [x] 文章列表 `/admin/articles`（分页 20 条/页，搜索，按权限过滤）
+- [x] 文章编辑器 `/admin/articles/new` + `/admin/articles/{id}/edit`（EasyMDE + Markdig 预渲染）
+- [x] `.md` 文件导入按钮
 - [ ] 验证：能写文章并发布
 
-### Step 5 — 标签管理
+### Step 5 — 标签管理 ✅
 
-- [ ] 标签 CRUD `/admin/tags`（Slug 自动生成，Phase 1 手动填写）
-- [ ] 删除前检查关联文章数
+- [x] 标签 CRUD `/admin/tags`（Slug 自动生成，Phase 1 手动填写）
+- [x] 删除前检查关联文章数
 
-### Step 6 — 知识链接管理
+### Step 6 — 知识链接管理 ✅
 
-- [ ] 知识链接 CRUD `/admin/knowledge-links`（双文章搜索选择器）
+- [x] 知识链接 CRUD `/admin/knowledge-links`（双文章搜索选择器）
 - [ ] 验证删除后 `/api/graph-data` 自动更新
 
-### Step 7 — 用户管理
+### Step 7 — 用户管理 ✅
 
-- [ ] 用户列表 `/admin/users`（邮箱、角色标签、状态、最近登录）
-- [ ] 邀请用户（`RequirePasswordChange = true`，一次性密码显示一次）
-- [ ] 停用用户（`LockoutEnd = DateTimeOffset.MaxValue`）
-- [ ] 服务端 guard：不允许停用自己、不允许停用唯一 Admin
+- [x] 用户列表 `/admin/users`（邮箱、角色标签、状态、最近登录）
+- [x] 邀请用户（`RequirePasswordChange = true`，一次性密码显示一次）
+- [x] 停用用户（`LockoutEnd = DateTimeOffset.MaxValue`）
+- [x] 服务端 guard：不允许停用自己、不允许停用唯一 Admin
 
-### Step 8 — 角色管理
+### Step 8 — 角色管理 ✅
 
-- [ ] 角色列表 + 权限编辑器 `/admin/roles`（10 个权限 Claim 的 checkbox 矩阵）
-- [ ] 修改角色权限后 `UpdateSecurityStampAsync` 该角色所有成员
-- [ ] 服务端 guard：Admin 角色不可删除、不可移除 `roles.manage` 权限
+- [x] 角色列表 + 权限编辑器 `/admin/roles`（10 个权限 Claim 的 checkbox 矩阵）
+- [x] 修改角色权限后 `UpdateSecurityStampAsync` 该角色所有成员
+- [x] 服务端 guard：Admin 角色不可删除、不可移除 `roles.manage` 权限
 
 ---
 

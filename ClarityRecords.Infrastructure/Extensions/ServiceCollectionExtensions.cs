@@ -15,6 +15,10 @@ public static class ServiceCollectionExtensions
         services.AddDbContextFactory<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
 
+        // Scoped AppDbContext for Identity (derived from factory, avoids lifetime conflict)
+        services.AddScoped<AppDbContext>(sp =>
+            sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
+
         services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
 
         return services;

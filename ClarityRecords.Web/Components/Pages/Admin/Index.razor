@@ -1,46 +1,62 @@
 @page "/admin"
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
-@inject NavigationManager Nav
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Data
+@using ClarityRecords.Infrastructure.Identity
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
 
-<PageTitle>管理后台 · 澄明录</PageTitle>
+<PageTitle>仪表盘 · 澄明录</PageTitle>
 
-<div class="two-col" style="padding-top:40px">
-    <main>
-        <div class="admin-header">
-            <h1 class="admin-page-title">管理后台</h1>
-            <form method="post" @formname="logout" style="display:inline" data-enhance="false">
-                <AntiforgeryToken />
-                <button type="submit" class="btn-logout">退出登录</button>
-            </form>
-        </div>
-        <p class="article-summary" style="margin-top:12px">
-            管理后台正在建设中，文章管理、知识链接等功能即将上线。
-        </p>
-    </main>
+<h1 class="admin-page-title">仪表盘</h1>
+
+<div class="admin-stats">
+    <div class="stat-card">
+        <div class="stat-card-value">@_totalArticles</div>
+        <div class="stat-card-label">文章总数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">@_publishedArticles</div>
+        <div class="stat-card-label">已发布</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">@_draftArticles</div>
+        <div class="stat-card-label">草稿</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">@_totalUsers</div>
+        <div class="stat-card-label">用户数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">@_knowledgeLinks</div>
+        <div class="stat-card-label">知识链接</div>
+    </div>
+</div>
+
+<div style="display:flex; gap:12px; flex-wrap:wrap;">
+    <a href="/admin/articles/new" class="btn-primary">+ 新建文章</a>
+    <a href="/admin/users" class="btn-secondary">邀请用户</a>
+    <a href="/admin/knowledge-links" class="btn-secondary">管理知识链接</a>
 </div>
 
 @code {
-    [CascadingParameter]
-    private HttpContext? HttpContext { get; set; }
-
-    [SupplyParameterFromForm(FormName = "logout")]
-    private LogoutInput? LogoutModel { get; set; }
+    private int _totalArticles;
+    private int _publishedArticles;
+    private int _draftArticles;
+    private int _totalUsers;
+    private int _knowledgeLinks;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!(HttpContext?.User?.Identity?.IsAuthenticated ?? false))
-        {
-            Nav.NavigateTo("/login", forceLoad: true);
-            return;
-        }
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var now = DateTimeOffset.UtcNow;
 
-        if (HttpContext?.Request.Method == "POST" && LogoutModel is not null)
-        {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            Nav.NavigateTo("/login", forceLoad: true);
-        }
+        _totalArticles = await db.Articles.CountAsync();
+        _publishedArticles = await db.Articles.CountAsync(a => a.PublishedAt != null && a.PublishedAt <= now);
+        _draftArticles = _totalArticles - _publishedArticles;
+        _knowledgeLinks = await db.ArticleManualLinks.CountAsync();
+        _totalUsers = await UserManager.Users.CountAsync();
     }
-
-    public class LogoutInput { }
 }

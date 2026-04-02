@@ -1,0 +1,223 @@
+@page "/admin/articles/new"
+@page "/admin/articles/{Id:guid}/edit"
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Data
+@using ClarityRecords.Domain.Entities
+@using ClarityRecords.Domain.Services
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IMarkdownRenderer MarkdownRenderer
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>@(_isNew ? "新建文章" : "编辑文章") · 澄明录</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <h1 class="admin-page-title" style="margin:0">@(_isNew ? "新建文章" : "编辑文章")</h1>
+    <a href="/admin/articles" class="btn-secondary">← 返回列表</a>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="form-error">@_error</div>
+}
+
+<div class="editor-layout">
+    <div class="editor-main">
+        <div class="form-group">
+            <label class="form-label">标题</label>
+            <input class="form-input" value="@_title" @oninput="OnTitleInput" placeholder="文章标题" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">正文（Markdown）</label>
+            <textarea id="article-editor" class="form-input"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">摘要</label>
+            <textarea class="form-input" rows="3" @bind="_summary" placeholder="可选摘要（最多500字）"></textarea>
+        </div>
+    </div>
+
+    <aside class="editor-sidebar">
+        <div class="form-group">
+            <label class="form-label">Slug</label>
+            <input class="form-input" @bind="_slug" placeholder="url-slug" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">发布状态</label>
+            <select class="form-input" @bind="_isPublished">
+                <option value="false">草稿</option>
+                <option value="true">已发布</option>
+            </select>
+        </div>
+
+        @if (_isPublished == "true")
+        {
+            <div class="form-group">
+                <label class="form-label">发布时间</label>
+                <input class="form-input" type="datetime-local" @bind="_publishedAt" />
+            </div>
+        }
+
+        <div class="form-group">
+            <label class="form-label">标签</label>
+            <div class="tag-checkboxes">
+                @foreach (var tag in _allTags)
+                {
+                    <label class="tag-checkbox-item">
+                        <input type="checkbox" checked="@_selectedTagIds.Contains(tag.Id)"
+                               @onchange="e => ToggleTag(tag.Id, (bool)(e.Value ?? false))" />
+                        @tag.Name
+                    </label>
+                }
+            </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+            <button class="btn-primary" @onclick="SaveArticle">保存</button>
+            <label class="btn-secondary" style="text-align:center; cursor:pointer;">
+                导入 .md 文件
+                <InputFile OnChange="ImportMarkdown" accept=".md" style="display:none" />
+            </label>
+        </div>
+    </aside>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool _isNew => Id == null;
+    private string _title = "";
+    private string _slug = "";
+    private string _summary = "";
+    private string _isPublished = "false";
+    private DateTime _publishedAt = DateTime.Now;
+    private string _error = "";
+    private List<Tag> _allTags = [];
+    private HashSet<Guid> _selectedTagIds = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _allTags = await db.Tags.OrderBy(t => t.Name).ToListAsync();
+
+        if (!_isNew && Id.HasValue)
+        {
+            var article = await db.Articles
+                .Include(a => a.ArticleTags)
+                .FirstOrDefaultAsync(a => a.Id == Id.Value);
+
+            if (article == null) { Nav.NavigateTo("/admin/articles"); return; }
+
+            _title = article.Title;
+            _slug = article.Slug;
+            _summary = article.Summary ?? "";
+            _selectedTagIds = article.ArticleTags.Select(at => at.TagId).ToHashSet();
+            _isPublished = article.IsPublished ? "true" : "false";
+            _publishedAt = article.PublishedAt?.LocalDateTime ?? DateTime.Now;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            await JS.InvokeVoidAsync("initEasyMDE", "article-editor");
+
+            if (!_isNew && Id.HasValue)
+            {
+                await using var db = await DbFactory.CreateDbContextAsync();
+                var article = await db.Articles.FindAsync(Id.Value);
+                if (article != null)
+                    await JS.InvokeVoidAsync("setEasyMDEContent", "article-editor", article.Body);
+            }
+        }
+        catch (JSException) { }
+    }
+
+    private void OnTitleInput(ChangeEventArgs e)
+    {
+        _title = e.Value?.ToString() ?? "";
+        if (_isNew)
+            _slug = GenerateSlug(_title);
+    }
+
+    private void ToggleTag(Guid tagId, bool selected)
+    {
+        if (selected) _selectedTagIds.Add(tagId);
+        else _selectedTagIds.Remove(tagId);
+    }
+
+    private async Task SaveArticle()
+    {
+        _error = "";
+        if (string.IsNullOrWhiteSpace(_title)) { _error = "标题不能为空"; return; }
+        if (string.IsNullOrWhiteSpace(_slug))  { _error = "Slug 不能为空"; return; }
+
+        var body = await JS.InvokeAsync<string>("getEasyMDEContent", "article-editor");
+        var htmlContent = MarkdownRenderer.Render(body);
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        Article article;
+        if (_isNew)
+        {
+            article = new Article { CreatedAt = DateTimeOffset.UtcNow };
+            db.Articles.Add(article);
+        }
+        else
+        {
+            article = await db.Articles.Include(a => a.ArticleTags)
+                .FirstOrDefaultAsync(a => a.Id == Id!.Value)
+                ?? throw new InvalidOperationException("Article not found");
+            db.ArticleTags.RemoveRange(article.ArticleTags);
+        }
+
+        article.Title = _title.Trim();
+        article.Slug = _slug.Trim();
+        article.Body = body;
+        article.Summary = string.IsNullOrWhiteSpace(_summary) ? null : _summary.Trim();
+        article.UpdatedAt = DateTimeOffset.UtcNow;
+        article.PublishedAt = _isPublished == "true"
+            ? new DateTimeOffset(_publishedAt, TimeZoneInfo.Local.GetUtcOffset(_publishedAt))
+            : null;
+
+        foreach (var tagId in _selectedTagIds)
+            db.ArticleTags.Add(new ArticleTag { ArticleId = article.Id, TagId = tagId });
+
+        try
+        {
+            await db.SaveChangesAsync();
+            Nav.NavigateTo("/admin/articles");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique") == true)
+        {
+            _error = "Slug 已存在，请修改后重试";
+        }
+    }
+
+    private async Task ImportMarkdown(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        using var reader = new System.IO.StreamReader(file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024));
+        var content = await reader.ReadToEndAsync();
+        await JS.InvokeVoidAsync("setEasyMDEContent", "article-editor", content);
+    }
+
+    private static string GenerateSlug(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return "";
+        var slug = title.ToLower()
+            .Replace(" ", "-")
+            .Replace("_", "-");
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^\w\-]", "");
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"-+", "-").Trim('-');
+        return slug.Length > 200 ? slug[..200] : slug;
+    }
+}

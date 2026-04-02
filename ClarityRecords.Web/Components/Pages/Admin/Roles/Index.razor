@@ -1,0 +1,166 @@
+@page "/admin/roles"
+@layout AdminLayout
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using ClarityRecords.Infrastructure.Identity
+@using ClarityRecords.Domain.Authorization
+@inject RoleManager<IdentityRole> RoleManager
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>角色管理 · 澄明录</PageTitle>
+
+<h1 class="admin-page-title">角色管理</h1>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="@(_isError ? "form-error" : "form-success")">@_message</div>
+}
+
+<div style="display:grid; grid-template-columns:220px 1fr; gap:32px; align-items:start;">
+
+    <div class="form-panel" style="padding:0; overflow:hidden;">
+        <div style="padding:12px 16px; font-size:0.82rem; font-weight:600; color:var(--text-muted); border-bottom:1px solid var(--border);">角色列表</div>
+        @foreach (var role in _roles)
+        {
+            <div class="role-list-item @(_selectedRole?.Id == role.Id ? "role-list-item-active" : "")"
+                 @onclick="() => SelectRole(role)">
+                @role.Name
+            </div>
+        }
+        <div style="padding:12px 16px; border-top:1px solid var(--border);">
+            <input class="form-input" style="font-size:0.82rem; padding:6px 10px;"
+                   @bind="_newRoleName" placeholder="新角色名..." />
+            <button class="btn-primary" style="width:100%; margin-top:8px; font-size:0.82rem; padding:6px;"
+                    @onclick="CreateRole">创建</button>
+        </div>
+    </div>
+
+    @if (_selectedRole != null)
+    {
+        <div class="form-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="font-size:0.9rem; margin:0; font-weight:600;">@_selectedRole.Name — 权限配置</h3>
+                @if (_selectedRole.Name != "Admin")
+                {
+                    <button class="action-link action-danger" @onclick="DeleteRole">删除角色</button>
+                }
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px;">
+                @foreach (var perm in Permissions.All)
+                {
+                    <label class="tag-checkbox-item" style="padding:8px 12px; background:var(--bg-subtle); border-radius:6px;">
+                        <input type="checkbox"
+                               checked="@_selectedPerms.Contains(perm)"
+                               @onchange="e => TogglePerm(perm, (bool)(e.Value ?? false))" />
+                        <span style="font-family:var(--mono); font-size:0.78rem;">@perm</span>
+                    </label>
+                }
+            </div>
+
+            <button class="btn-primary" @onclick="SavePermissions">保存权限</button>
+        </div>
+    }
+    else
+    {
+        <div style="color:var(--text-muted); padding-top:32px;">← 选择角色来编辑权限</div>
+    }
+</div>
+
+@code {
+    private List<IdentityRole> _roles = [];
+    private IdentityRole? _selectedRole;
+    private HashSet<string> _selectedPerms = [];
+    private string _newRoleName = "";
+    private string _message = "";
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadRoles();
+
+    private async Task LoadRoles()
+    {
+        _roles = await RoleManager.Roles.OrderBy(r => r.Name).ToListAsync();
+    }
+
+    private async Task SelectRole(IdentityRole role)
+    {
+        _selectedRole = role;
+        var claims = await RoleManager.GetClaimsAsync(role);
+        _selectedPerms = claims
+            .Where(c => c.Type == "permission")
+            .Select(c => c.Value)
+            .ToHashSet();
+    }
+
+    private void TogglePerm(string perm, bool add)
+    {
+        if (add) _selectedPerms.Add(perm);
+        else _selectedPerms.Remove(perm);
+    }
+
+    private async Task SavePermissions()
+    {
+        if (_selectedRole == null) return;
+
+        // Guard: Admin role must keep roles.manage
+        if (_selectedRole.Name == "Admin" && !_selectedPerms.Contains(Permissions.RolesManage))
+        {
+            ShowMessage("Admin 角色不能移除 roles.manage 权限", true);
+            return;
+        }
+
+        var role = await RoleManager.FindByIdAsync(_selectedRole.Id);
+        if (role == null) return;
+
+        // Remove all existing permission claims
+        var existingClaims = await RoleManager.GetClaimsAsync(role);
+        foreach (var claim in existingClaims.Where(c => c.Type == "permission"))
+            await RoleManager.RemoveClaimAsync(role, claim);
+
+        // Add selected permissions
+        foreach (var perm in _selectedPerms)
+            await RoleManager.AddClaimAsync(role, new System.Security.Claims.Claim("permission", perm));
+
+        // Invalidate security stamps for all users in this role
+        var users = await UserManager.GetUsersInRoleAsync(role.Name!);
+        foreach (var user in users)
+            await UserManager.UpdateSecurityStampAsync(user);
+
+        ShowMessage("权限已保存，相关用户将在下次请求时刷新权限", false);
+        await LoadRoles();
+        await SelectRole(role);
+    }
+
+    private async Task CreateRole()
+    {
+        if (string.IsNullOrWhiteSpace(_newRoleName)) { ShowMessage("角色名不能为空", true); return; }
+        var result = await RoleManager.CreateAsync(new IdentityRole(_newRoleName.Trim()));
+        if (!result.Succeeded)
+        {
+            ShowMessage(string.Join("；", result.Errors.Select(e => e.Description)), true);
+            return;
+        }
+        _newRoleName = "";
+        ShowMessage("角色已创建", false);
+        await LoadRoles();
+    }
+
+    private async Task DeleteRole()
+    {
+        if (_selectedRole == null) return;
+        if (_selectedRole.Name == "Admin") { ShowMessage("Admin 角色不能删除", true); return; }
+
+        var usersInRole = await UserManager.GetUsersInRoleAsync(_selectedRole.Name!);
+        if (usersInRole.Any()) { ShowMessage($"角色下还有 {usersInRole.Count} 名用户，无法删除", true); return; }
+
+        var role = await RoleManager.FindByIdAsync(_selectedRole.Id);
+        if (role != null) await RoleManager.DeleteAsync(role);
+
+        _selectedRole = null;
+        ShowMessage("角色已删除", false);
+        await LoadRoles();
+    }
+
+    private void ShowMessage(string msg, bool isError) { _message = msg; _isError = isError; }
+}
