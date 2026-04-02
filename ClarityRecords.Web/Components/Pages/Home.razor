@@ -24,7 +24,7 @@
                         @article.PublishedAt?.ToString("yyyy-MM-dd")
                         @if (EstimateReadingMinutes(article.Body) > 0)
                         {
-                            <span> · @EstimateReadingMinutes(article.Body) min read</span>
+                            <span> · 约 @EstimateReadingMinutes(article.Body) 分钟读完</span>
                         }
                     </div>
                     <h2 class="article-card-title">

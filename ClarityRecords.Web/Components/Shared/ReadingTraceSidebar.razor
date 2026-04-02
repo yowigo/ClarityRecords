@@ -54,9 +54,9 @@
     private static string FormatTime(DateTimeOffset t)
     {
         var diff = DateTimeOffset.UtcNow - t;
-        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
-        if (diff.TotalDays < 30) return $"{(int)diff.TotalDays}d ago";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} 分钟前";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} 小时前";
+        if (diff.TotalDays < 30) return $"{(int)diff.TotalDays} 天前";
         return t.ToString("MM-dd");
     }
 }

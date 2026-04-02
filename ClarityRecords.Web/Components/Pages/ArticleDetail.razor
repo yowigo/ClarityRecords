@@ -25,7 +25,7 @@ else
                 <h1 class="article-detail-title">@_article.Title</h1>
                 <div class="article-detail-meta">
                     @_article.PublishedAt?.ToString("yyyy-MM-dd")
-                    <span> · @EstimateReadingMinutes(_article.Body) min read</span>
+                    <span> · 约 @EstimateReadingMinutes(_article.Body) 分钟读完</span>
                     @if (_article.ArticleTags.Any())
                     {
                         <span> · </span>

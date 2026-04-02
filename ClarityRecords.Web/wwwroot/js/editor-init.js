@@ -8,7 +8,7 @@ window.initEasyMDE = function (elementId) {
     // Fill remaining viewport height: subtract toolbar (~46px), statusbar (0, disabled),
     // admin bottom padding (24px), and a small breathing room (20px)
     const rect = el.getBoundingClientRect();
-    const minH = Math.max(300, window.innerHeight - rect.top - 150);
+    const minH = Math.max(300, window.innerHeight - rect.top - 100);
 
     window._editors[elementId] = new EasyMDE({
         element: el,
