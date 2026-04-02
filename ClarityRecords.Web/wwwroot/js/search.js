@@ -1,5 +1,5 @@
 /* ============================================================
-   澄明录 — Search Modal (Ctrl+K)
+   澄明录 — 搜索弹窗（Ctrl+K）
    ============================================================ */
 
 (function () {
@@ -52,7 +52,7 @@
     resultsEl.innerHTML = '';
     activeIdx = -1;
     currentItems = [];
-    // Slight delay so Blazor navigation doesn't steal focus
+    // 延迟执行，避免 Blazor 导航抢占焦点
     setTimeout(function () { inputEl.focus(); }, 30);
   }
 
@@ -150,7 +150,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  // Global Ctrl+K / Cmd+K shortcut
+  // 全局 Ctrl+K / Cmd+K 快捷键
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
@@ -158,7 +158,7 @@
     }
   });
 
-  // Expose for header button onclick
+  // 供 Header 按钮点击调用
   window.openSearch = openSearch;
 })();
 

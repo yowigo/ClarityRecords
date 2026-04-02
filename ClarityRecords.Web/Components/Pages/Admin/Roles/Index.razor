@@ -103,7 +103,7 @@
     {
         if (_selectedRole == null) return;
 
-        // Guard: Admin role must keep roles.manage
+        // 保护：Admin 角色必须保留 roles.manage 权限
         if (_selectedRole.Name == "Admin" && !_selectedPerms.Contains(Permissions.RolesManage))
         {
             ShowMessage("Admin 角色不能移除 roles.manage 权限", true);
@@ -113,16 +113,16 @@
         var role = await RoleManager.FindByIdAsync(_selectedRole.Id);
         if (role == null) return;
 
-        // Remove all existing permission claims
+        // 先清除该角色现有的所有权限声明
         var existingClaims = await RoleManager.GetClaimsAsync(role);
         foreach (var claim in existingClaims.Where(c => c.Type == "permission"))
             await RoleManager.RemoveClaimAsync(role, claim);
 
-        // Add selected permissions
+        // 写入勾选的权限
         foreach (var perm in _selectedPerms)
             await RoleManager.AddClaimAsync(role, new System.Security.Claims.Claim("permission", perm));
 
-        // Invalidate security stamps for all users in this role
+        // 使该角色下所有用户的安全戳失效，强制刷新权限
         var users = await UserManager.GetUsersInRoleAsync(role.Name!);
         foreach (var user in users)
             await UserManager.UpdateSecurityStampAsync(user);

@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddDbContextFactory<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
 
-        // Scoped AppDbContext for Identity (derived from factory, avoids lifetime conflict)
+        // 为 Identity 提供 Scoped AppDbContext（从工厂派生，避免生命周期冲突）
         services.AddScoped<AppDbContext>(sp =>
             sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
 

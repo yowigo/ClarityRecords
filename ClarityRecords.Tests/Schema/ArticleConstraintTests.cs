@@ -18,7 +18,7 @@ public class ArticleConstraintTests(DatabaseFixture fixture)
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         var pgEx = Assert.IsType<PostgresException>(ex.InnerException);
-        Assert.Equal("23505", pgEx.SqlState); // unique_violation
+        Assert.Equal("23505", pgEx.SqlState); // 唯一约束冲突
     }
 
     [Fact]

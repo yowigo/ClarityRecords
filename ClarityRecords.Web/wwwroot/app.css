@@ -20,7 +20,7 @@
   --mono: "Cascadia Code", "Consolas", "Monaco", monospace;
 }
 
-/* ── Theme: Cool (original blue/sans) ── */
+/* ── 主题：Cool（蓝色/无衬线） ── */
 [data-theme="cool"] {
   --bg:          #f8f9fa;
   --bg-card:     #ffffff;
@@ -50,14 +50,14 @@ html, body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-soft); }
 
-/* ── Layout ── */
+/* ── 页面布局 ── */
 .site-container {
   max-width: 80%;
   margin: 0 auto;
   padding: 0 40px;
 }
 
-/* Header */
+/* 顶部导航栏 */
 .site-header {
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
@@ -145,7 +145,7 @@ a:hover { color: var(--accent-soft); }
   color: var(--text-light);
 }
 
-/* ── Card (shared hover interaction) ── */
+/* ── 卡片（通用悬停交互） ── */
 .card {
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
@@ -155,7 +155,7 @@ a:hover { color: var(--accent-soft); }
   border-color: var(--accent);
 }
 
-/* Two-column layout */
+/* 双列布局 */
 .two-col {
   display: grid;
   grid-template-columns: 3fr 1fr;
@@ -163,7 +163,7 @@ a:hover { color: var(--accent-soft); }
   padding: 32px 0;
 }
 
-/* ── Article Card ── */
+/* ── 文章卡片 ── */
 .article-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -214,7 +214,7 @@ a:hover { color: var(--accent-soft); }
 }
 .read-more:hover { color: var(--accent-soft); }
 
-/* ── Sidebar ── */
+/* ── 侧边栏 ── */
 .sidebar { display: flex; flex-direction: column; gap: 16px; }
 .sidebar-card {
   background: var(--bg-card);
@@ -229,7 +229,7 @@ a:hover { color: var(--accent-soft); }
   margin: 0 0 14px;
 }
 
-/* Sidebar: Categories */
+/* 侧边栏：分类 */
 .category-list { list-style: none; margin: 0; padding: 0; }
 .category-list li { padding: 4px 0; border-bottom: 1px solid var(--border); }
 .category-list li:last-child { border-bottom: none; }
@@ -246,7 +246,7 @@ a:hover { color: var(--accent-soft); }
   color: var(--text-light);
 }
 
-/* Sidebar: Graph Teaser */
+/* 侧边栏：知识图谱预览 */
 .graph-teaser {
   font-size: 0.875rem;
   color: var(--text-muted);
@@ -259,7 +259,7 @@ a:hover { color: var(--accent-soft); }
   gap: 4px;
 }
 
-/* Sidebar: Reading Trace */
+/* 侧边栏：阅读轨迹 */
 .trace-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .trace-item { display: flex; gap: 8px; align-items: flex-start; }
 .trace-dot {
@@ -287,7 +287,7 @@ a:hover { color: var(--accent-soft); }
   margin-top: 2px;
 }
 
-/* ── Article Detail ── */
+/* ── 文章详情 ── */
 .article-detail-content {
   max-width: 680px;
 }
@@ -350,7 +350,7 @@ a:hover { color: var(--accent-soft); }
 }
 .article-body th { background: var(--tag-bg); font-weight: 600; }
 
-/* ── Footer ── */
+/* ── 页脚 ── */
 .site-footer {
   border-top: 1px solid var(--border);
   padding: 24px 0;
@@ -365,7 +365,7 @@ a:hover { color: var(--accent-soft); }
 }
 .site-footer-right { text-align: right; line-height: 1.6; }
 
-/* ── Empty States ── */
+/* ── 空状态 ── */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -408,11 +408,11 @@ a:hover { color: var(--accent-soft); }
 }
 .btn-secondary:hover { color: var(--text); border-color: var(--text-muted); }
 
-/* ── Knowledge Graph Page ── */
+/* ── 知识图谱页面 ── */
 .graph-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px); /* minus sticky header */
+  height: calc(100vh - 56px); /* 减去顶部导航栏高度 */
   overflow: hidden;
 }
 .graph-toolbar {
@@ -477,7 +477,7 @@ a:hover { color: var(--accent-soft); }
   margin: 0 0 20px;
 }
 
-/* Mobile: floating trace button + drawer */
+/* 移动端：浮动轨迹按钮 + 抽屉 */
 .trace-float-btn {
   display: none;
   position: fixed;
@@ -528,7 +528,7 @@ a:hover { color: var(--accent-soft); }
   .graph-toolbar-hint { display: none; }
 }
 
-/* ── Login Page ── */
+/* ── 登录页面 ── */
 .login-page {
   min-height: 100vh;
   display: flex;
@@ -656,7 +656,7 @@ a:hover { color: var(--accent-soft); }
 .login-back a { color: var(--text-light); }
 .login-back a:hover { color: var(--accent); }
 
-/* ── Admin Layout ── */
+/* ── 后台布局 ── */
 .admin-shell {
   display: flex;
   min-height: 100vh;
@@ -726,7 +726,7 @@ a:hover { color: var(--accent-soft); }
 }
 .btn-logout:hover { color: #b91c1c; border-color: #fecaca; }
 
-/* Admin stat cards */
+/* 后台统计卡片 */
 .admin-stats {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -752,7 +752,7 @@ a:hover { color: var(--accent-soft); }
   letter-spacing: 0.04em;
 }
 
-/* Admin header (legacy, kept for compatibility) */
+/* 后台标题栏（旧版，保留兼容性） */
 .admin-header {
   display: flex;
   align-items: center;
@@ -762,7 +762,7 @@ a:hover { color: var(--accent-soft); }
   margin-bottom: 20px;
 }
 
-/* ── Admin Tables ── */
+/* ── 后台数据表格 ── */
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -832,7 +832,7 @@ a:hover { color: var(--accent-soft); }
 }
 .filter-select { min-width: 120px; }
 
-/* ── Article Editor ── */
+/* ── 文章编辑器 ── */
 .editor-layout {
   display: grid;
   grid-template-columns: 1fr 220px;
@@ -841,7 +841,7 @@ a:hover { color: var(--accent-soft); }
 }
 .editor-sidebar { display: flex; flex-direction: column; }
 
-/* Prevent horizontal resize on textareas */
+/* 禁止文本域横向拉伸 */
 textarea.form-input { resize: vertical; }
 .form-group { margin-bottom: 12px; }
 .form-label {
@@ -915,7 +915,7 @@ textarea.form-input { resize: vertical; }
   padding: 4px 8px;
 }
 
-/* ── Search Modal ── */
+/* ── 搜索弹窗 ── */
 .search-overlay {
   display: none;
   position: fixed;
@@ -1018,13 +1018,13 @@ body.search-open { overflow: hidden; }
   background: var(--bg);
 }
 
-/* ── Focus (keyboard nav) ── */
+/* ── 焦点（键盘导航） ── */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ── Responsive ── */
+/* ── 响应式布局 ── */
 @media (max-width: 1023px) {
   .two-col { grid-template-columns: 1fr; }
   .sidebar { order: -1; }
@@ -1042,7 +1042,7 @@ body.search-open { overflow: hidden; }
   .site-footer-right { text-align: center; }
 }
 
-/* Role list */
+/* 角色列表 */
 .role-list-item {
   display: block;
   width: 100%;

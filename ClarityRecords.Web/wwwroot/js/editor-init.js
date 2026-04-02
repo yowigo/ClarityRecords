@@ -5,8 +5,7 @@ window.initEasyMDE = function (elementId) {
     if (!el) return;
     if (window._editors[elementId]) return;
 
-    // Fill remaining viewport height: subtract toolbar (~46px), statusbar (0, disabled),
-    // admin bottom padding (24px), and a small breathing room (20px)
+    // 计算剩余视口高度：减去工具栏（约 46px）、状态栏（0，已禁用）及底部留白
     const rect = el.getBoundingClientRect();
     const minH = Math.max(300, window.innerHeight - rect.top - 100);
 

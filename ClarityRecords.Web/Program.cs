@@ -217,7 +217,7 @@ static async Task SeedAsync(WebApplication app)
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // Seed roles with permissions
+    // 初始化角色及其权限
     var rolePermissions = new Dictionary<string, string[]>
     {
         ["Admin"] = Permissions.All,
@@ -246,7 +246,7 @@ static async Task SeedAsync(WebApplication app)
         }
     }
 
-    // Seed initial admin user if none exist
+    // 若无任何用户则创建初始管理员账户
     if (!userManager.Users.Any())
     {
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();

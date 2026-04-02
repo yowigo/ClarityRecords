@@ -31,7 +31,7 @@ public class ArticleLinkConstraintTests(DatabaseFixture fixture)
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         var pgEx = Assert.IsType<PostgresException>(ex.InnerException);
-        Assert.Equal("23514", pgEx.SqlState); // check_violation
+        Assert.Equal("23514", pgEx.SqlState); // CHECK 约束冲突
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ArticleLinkConstraintTests(DatabaseFixture fixture)
         db.ArticleManualLinks.Add(new ArticleManualLink { FromArticleId = a2.Id, ToArticleId = a1.Id });
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         var pgEx = Assert.IsType<PostgresException>(ex.InnerException);
-        Assert.Equal("23505", pgEx.SqlState); // unique_violation
+        Assert.Equal("23505", pgEx.SqlState); // 唯一约束冲突
     }
 
     [Fact]

@@ -34,7 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
                 .WithMany()
                 .HasForeignKey(a => a.AuthorId)
                 .OnDelete(DeleteBehavior.SetNull);
-            // Embedding column added in Phase 3 migration
+            // 向量嵌入列在第三阶段迁移中添加
         });
 
         modelBuilder.Entity<Tag>(e =>
@@ -77,7 +77,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
                 .WithMany(a => a.IncomingLinks)
                 .HasForeignKey(l => l.ToArticleId)
                 .OnDelete(DeleteBehavior.Cascade);
-            // Undirected uniqueness index and self-loop check are applied in the migration SQL directly
+            // 无向唯一索引与自环检查约束直接在迁移 SQL 中定义
         });
 
         modelBuilder.Entity<ReadingTrace>(e =>
@@ -99,7 +99,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
                 .WithMany()
                 .HasForeignKey(r => r.ManualLinkId)
                 .OnDelete(DeleteBehavior.SetNull);
-            // CHECK constraint applied in migration SQL directly
+            // CHECK 约束直接在迁移 SQL 中定义
         });
     }
 }

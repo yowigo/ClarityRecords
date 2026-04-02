@@ -27,7 +27,7 @@ public class ReadingTraceConstraintTests(DatabaseFixture fixture)
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         var pgEx = Assert.IsType<PostgresException>(ex.InnerException);
-        Assert.Equal("23514", pgEx.SqlState); // check_violation
+        Assert.Equal("23514", pgEx.SqlState); // CHECK 约束冲突
     }
 
     // ── 跨字段 CHECK ─────────────────────────────────────────────────────────
