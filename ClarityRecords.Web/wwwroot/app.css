@@ -705,13 +705,13 @@ a:hover { color: var(--accent-soft); }
 }
 .admin-main {
   flex: 1;
-  padding: 40px 48px;
+  padding: 24px 32px;
   min-width: 0;
 }
 .admin-page-title {
   font-size: 1.12rem;
   font-weight: 600;
-  margin: 0 0 28px 0;
+  margin: 0 0 20px 0;
 }
 .btn-logout {
   font-family: var(--mono);
@@ -730,13 +730,13 @@ a:hover { color: var(--accent-soft); }
 .admin-stats {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
-  margin-bottom: 40px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 20px;
+  padding: 16px;
 }
 .stat-card-value {
   font-family: var(--mono);
@@ -757,9 +757,9 @@ a:hover { color: var(--accent-soft); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 20px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 /* ── Admin Tables ── */
@@ -835,12 +835,21 @@ a:hover { color: var(--accent-soft); }
 /* ── Article Editor ── */
 .editor-layout {
   display: grid;
-  grid-template-columns: 1fr 240px;
-  gap: 24px;
+  grid-template-columns: 1fr 220px;
+  gap: 20px;
   align-items: start;
 }
 .editor-sidebar { display: flex; flex-direction: column; }
-.form-group { margin-bottom: 16px; }
+
+/* EasyMDE editor fills available viewport height */
+.editor-main .EasyMDEContainer .CodeMirror {
+  min-height: max(360px, calc(100vh - 320px));
+}
+.editor-main .EasyMDEContainer {
+  display: flex;
+  flex-direction: column;
+}
+.form-group { margin-bottom: 12px; }
 .form-label {
   display: block;
   font-size: 0.75rem;
@@ -1041,11 +1050,18 @@ body.search-open { overflow: hidden; }
 
 /* Role list */
 .role-list-item {
+  display: block;
+  width: 100%;
   padding: 10px 16px;
   font-size: 0.85rem;
+  font-family: var(--sans);
+  text-align: left;
   cursor: pointer;
+  border: none;
   border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--text);
   transition: background 0.15s;
 }
-.role-list-item:hover { background: var(--bg-subtle); }
+.role-list-item:hover { background: var(--tag-bg); }
 .role-list-item-active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
