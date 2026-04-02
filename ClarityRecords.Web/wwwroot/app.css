@@ -841,14 +841,8 @@ a:hover { color: var(--accent-soft); }
 }
 .editor-sidebar { display: flex; flex-direction: column; }
 
-/* EasyMDE editor fills available viewport height */
-.editor-main .EasyMDEContainer .CodeMirror {
-  min-height: max(360px, calc(100vh - 320px));
-}
-.editor-main .EasyMDEContainer {
-  display: flex;
-  flex-direction: column;
-}
+/* Prevent horizontal resize on textareas */
+textarea.form-input { resize: vertical; }
 .form-group { margin-bottom: 12px; }
 .form-label {
   display: block;
