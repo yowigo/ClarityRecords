@@ -32,7 +32,6 @@ logs/
 
 # Secrets / env
 appsettings.*.json
-!appsettings.Development.json
 *.pfx
 *.p12
 
